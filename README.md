@@ -78,3 +78,121 @@ ask you to solve an algorithm, but you will be expected to demo your solution an
 
 Good luck, and we look forward to seeing your URL Shortener project! If you have any questions or need
 clarifications, please reach out to us.
+
+## Project Summary
+
+This project implements a **URL Shortener Service** using **FastAPI** with Redis as the storage backend. It exposes two key API endpoints for shortening and resolving URLs, with multiple worker support and handling for various edge cases.
+
+### API Endpoints:
+1. **POST** `/url/shorten`: 
+   - Accepts a valid HTTP/HTTPS URL and returns a shortened URL.
+   - Example input: `{ "url": "https://www.google.com" }`
+   - Example output: `{ "short_url": "http://localhost:8000/r/abc123" }`
+
+2. **GET** `/r/<short_url>`: 
+   - Resolves the shortened URL to its original URL.
+   - Example: `GET /r/abc123` resolves the shortened URL and redirects the user to the original URL (e.g., `https://www.google.com`).
+   - If the short URL is unknown, an **HTTP 404 Not Found** response is returned.
+
+---
+
+## How This Solution Meets the Project Requirements
+
+### 1. **API Endpoints:**
+
+- **POST `/url/shorten`**:
+   - This endpoint accepts a URL via a POST request and generates a shortened URL.
+   - The shortened URL can be later resolved using the `/r/<short_url>` endpoint.
+   - Example Request:
+     ```bash
+     curl -X POST "http://localhost:8000/url/shorten" \
+          -H "Content-Type: application/json" \
+          -d '{"url": "https://www.google.com"}'
+     ```
+   - Example Response:
+     ```json
+     { "short_url": "http://localhost:8000/r/abc123" }
+     ```
+
+- **GET `/r/<short_url>`**:
+   - This endpoint resolves a previously generated short URL and redirects to the original URL.
+   - If the short URL is invalid or does not exist, a **404 Not Found** response is returned.
+   - Example Request:
+     ```bash
+     curl -L "http://localhost:8000/r/abc123"
+     ```
+
+### 2. **Multiple Worker Support**:
+
+The solution supports running the service with **multiple workers** as required. This is achieved using **Docker Compose**, which spins up multiple instances of the FastAPI app, allowing the service to handle requests across different instances.
+
+- **How It Works**:
+   - You can run two instances of the service using `docker-compose` with multiple workers (`url-shortener-1` and `url-shortener-2`).
+   - A request can be made to shorten a URL on one instance (`url-shortener-1`), and the shortened URL can be resolved by making a request to another instance (`url-shortener-2`).
+   - Redis is used as the centralized data store, ensuring consistency across all workers.
+
+- **Testing**: 
+   - Start the system with Docker Compose:
+     ```bash
+     docker-compose up --build
+     ```
+   - Make a request to shorten a URL using one instance, and resolve the shortened URL using the other instance. Both instances communicate with the same Redis instance, ensuring the service behaves correctly across multiple workers.
+
+### 3. **Handling Edge Cases**:
+
+The service has been built to handle several edge cases:
+
+1. **Duplicate URL Handling**: 
+   - If the same URL is shortened multiple times, the service returns the same short URL instead of generating a new one. This avoids duplicate entries in Redis.
+
+2. **Collision Handling**: 
+   - The system ensures that there are no key collisions when generating short URLs. If a collision is detected, a new short URL is generated until a unique one is found.
+
+3. **Redis Outage Handling**: 
+   - If Redis is unavailable, the service returns a **503 Service Unavailable** response, ensuring that the application doesn't crash and users receive a meaningful error message.
+
+4. **Case-Insensitive Short URLs**: 
+   - Shortened URLs are case-insensitive. Regardless of how the user inputs the shortened URL (e.g., `abc123`, `ABC123`), it will resolve correctly to the original URL.
+
+5. **URL Validation**: 
+   - Only valid HTTP/HTTPS URLs are accepted. Malformed URLs are rejected with a **422 Unprocessable Entity** response and a clear error message.
+
+---
+
+## How to Run the Service
+
+1. **Running with Docker Compose**:
+   - To start the service with multiple workers and Redis, use the following command:
+     ```bash
+     docker-compose up --build
+     ```
+   - This will start two instances of the URL shortener service and a Redis instance.
+
+2. **Testing the Service**:
+   - The service can be tested via **Swagger UI** available at `http://localhost:8000/docs` or using `curl` commands.
+   - Example `curl` request to shorten a URL:
+     ```bash
+     curl -X POST "http://localhost:8000/url/shorten" \
+          -H "Content-Type: application/json" \
+          -d '{"url": "https://www.google.com"}'
+     ```
+   - Example `curl` request to resolve a shortened URL:
+     ```bash
+     curl -L "http://localhost:8000/r/abc123"
+     ```
+
+---
+
+## Environment and Dependencies
+
+- **FastAPI**: The web framework used to build the service.
+- **Redis**: Used as a centralized key-value store for storing URL mappings. Ensure Redis is running as part of the Docker Compose setup.
+- **Pydantic**: Used for data validation to ensure that only valid HTTP/HTTPS URLs are accepted.
+- **Docker**: The service is containerized with Docker and can be easily run with multiple workers using Docker Compose.
+
+### Notes:
+- Make sure **Redis** is installed or available via Docker to run the service successfully.
+- All dependencies are listed in `requirements.txt`. To install them manually, run:
+  ```bash
+  pip install -r requirements.txt
+

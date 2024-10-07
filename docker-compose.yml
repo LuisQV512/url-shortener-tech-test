@@ -1,0 +1,27 @@
+version: "3.8"
+services:
+  redis:
+    image: redis:latest
+    container_name: redis-instance
+    ports:
+      - "6379:6379"
+
+  app1:
+    build: .
+    container_name: url-shortener-1
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+
+  app2:
+    build: .
+    container_name: url-shortener-2
+    ports:
+      - "8001:8000"
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
